@@ -1,0 +1,30 @@
+pipeline:
+  build:
+    image: registry.cn-hangzhou.aliyuncs.com/acs/maven
+    commands:
+      - mvn clean package -DskipTests
+    volumes:
+      - /root/maven/repository:/root/.m2/repository
+      - /root/maven/settings.xml:/usr/share/maven/conf/settings.xml
+  
+  publish:
+    image: docker
+    secrets: [docker_username,docker_password]
+    commands:
+        - docker login --username=$DOCKER_USERNAME --password=$DOCKER_PASSWORD registry-vpc.cn-shenzhen.aliyuncs.com/pipipan/trader-consumer
+        - docker build -t registry-vpc.cn-shenzhen.aliyuncs.com/pipipan/trader-consumer:master -f Dockerfile .
+        - docker push registry-vpc.cn-shenzhen.aliyuncs.com/pipipan/trader-consumer:master
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    when:
+        branch: master
+        status: success
+
+  deploy:
+    image: appleboy/drone-ssh
+    host: 202.120.40.8
+    secrets: [ssh_username, ssh_password]
+    port: 30250
+    script:
+      - /root/shell/deployment-wjs.sh trader-consumer 30256 9092
+
