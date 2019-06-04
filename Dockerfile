@@ -1,7 +1,7 @@
 FROM registry.cn-shenzhen.aliyuncs.com/javajs/java
 VOLUME /tmp
 RUN mkdir /app
-ADD target/trader-consumer-0.0.1-SNAPSHOT.jar /app/app.jar
+ADD target/taskconsumer-0.0.1-SNAPSHOT.jar /app/app.jar
 ADD runboot.sh /app
 ENV TZ=Asia/Shanghai
 RUN sh -c 'touch /app/app.jar' && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
