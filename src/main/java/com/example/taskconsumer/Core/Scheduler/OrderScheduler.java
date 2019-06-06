@@ -33,6 +33,12 @@ public class OrderScheduler {
 
     private static Logger logger  = LoggerFactory.getLogger("OrderScheduler");
 
+    private Random random = new Random(Calendar.getInstance().getTimeInMillis());
+    private Calendar randomBias(Calendar calendar){
+        calendar.add(Calendar.MINUTE, random.nextInt(10)-5);
+        calendar.add(Calendar.SECOND, random.nextInt(30)-15);
+        return calendar;
+    }
     /**
      * Key: GroupId, OrderToSendId
      * Value: ScheduledFuture, channel pair
@@ -47,6 +53,7 @@ public class OrderScheduler {
     public ScheduledFuture schedule(OrderTask orderTask, Calendar calendar){
         logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Time: " + DateUtil.calendarToString(calendar, DateUtil.datetimeFormat));
         logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Order: " + JSON.toJSONString(orderTask.getOrder()));
+        calendar = randomBias(calendar);
         ScheduledFuture future = schedule(orderTask, calendar.getTime());
 
         String groupId = orderTask.getOts().getGroupId();
