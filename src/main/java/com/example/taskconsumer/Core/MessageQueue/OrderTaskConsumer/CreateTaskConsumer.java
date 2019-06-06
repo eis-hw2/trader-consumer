@@ -40,6 +40,8 @@ public class CreateTaskConsumer implements TaskConsumer{
 
             JSONObject jsonMessge = JSON.parseObject(message);
             String type = jsonMessge.getString("type");
+            if (type == null)
+                throw new InvalidTaskConsumerCommand("Invalid Command in Create: null");
 
             switch (type){
                 case TaskConsumerCommand.CREATE:
