@@ -36,7 +36,7 @@ public class CreateTaskConsumer implements TaskConsumer{
         return (consumerTag, delivery) -> {
 
             String message = new String(delivery.getBody(), "UTF-8");
-            logger.info("[OrderTaskConsumer.consume] Raw Message: " + message);
+            logger.info("[CreateTaskConsumer.consume] Raw Message: " + message);
 
             JSONObject jsonMessge = JSON.parseObject(message);
             String type = jsonMessge.getString("type");
@@ -51,19 +51,19 @@ public class CreateTaskConsumer implements TaskConsumer{
                     ots.setStatus(OrderToSend.SCHEDULED);
                     orderToSendDao.save(ots);
 
-                    logger.info("[OrderTaskConsumer.consume.create."+ots.getId()+"] " + JSON.toJSONString(ots));
+                    logger.info("[CreateTaskConsumer.consume.create."+ots.getId()+"] " + JSON.toJSONString(ots));
 
                     if (ots.getOrder().getTotalCount() == 0) {
-                        logger.info("[OrderTaskConsumer.consume.create."+ots.getId()+"] TotalCount = 0");
+                        logger.info("[CreateTaskConsumer.consume.create."+ots.getId()+"] TotalCount = 0");
                         return;
                     }
                     try{
                         Calendar calendar = DateUtil.stringToCalendar(ots.getDatetime(), DateUtil.datetimeFormat);
                         scheduler.schedule(orderTaskFactory.create(ots, channel, delivery), calendar);
-                        logger.info("[OrderTaskConsumer.consume.create."+ots.getId()+"] Success");
+                        logger.info("[CreateTaskConsumer.consume.create."+ots.getId()+"] Success");
                     }
                     catch(ParseException e){
-                        logger.info("[OrderTaskConsumer.consume.create."+ots.getId()+"] Error");
+                        logger.info("[CreateTaskConsumer.consume.create."+ots.getId()+"] Error");
                         e.printStackTrace();
                         return;
                     }

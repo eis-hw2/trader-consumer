@@ -84,7 +84,7 @@ public class OrderTask implements Runnable {
         sendACK();
     }
 
-    private void sendACK(){
+    public void sendACK(){
         try{
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
         }

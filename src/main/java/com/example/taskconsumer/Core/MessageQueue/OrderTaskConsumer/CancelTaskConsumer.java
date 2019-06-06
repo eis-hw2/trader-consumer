@@ -50,16 +50,18 @@ public class CancelTaskConsumer implements TaskConsumer{
                     List<String> ids = orderScheduler.cancel(groupId);
                     List<OrderToSend> group = orderToSendDao.findByGroupId(groupId);
 
+                    logger.info("[CreateTaskConsumer.consume.cancel."+groupId+"] All OtsId:");
                     group.stream().forEach(e -> {
-                        logger.info("[CreateTaskConsumer.consume.cancel."+groupId+"."+e.getId()+"] All OtsId: " + e.getId());
+                        logger.info(e.getId());
                     });
 
                     List<OrderToSend> filtered = group.stream()
                             .filter(e -> ids.contains(e.getId()))
                             .collect(Collectors.toList());
 
+                    logger.info("[CreateTaskConsumer.consume.cancel."+groupId+"] Cancelled OtsId:");
                     filtered.stream().forEach(e -> {
-                        logger.info("[CreateTaskConsumer.consume.cancel."+groupId+"."+e.getId()+"] Cancelled OtsId: " + e.getId());
+                        logger.info(e.getId());
                         e.setStatus(OrderToSend.CANCELLED);
                     });
                     orderToSendDao.saveAll(filtered);

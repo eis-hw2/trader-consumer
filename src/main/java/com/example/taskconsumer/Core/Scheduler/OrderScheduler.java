@@ -3,6 +3,7 @@ package com.example.taskconsumer.Core.Scheduler;
 import com.alibaba.fastjson.JSON;
 import com.example.taskconsumer.Core.Task.OrderTask;
 import com.example.taskconsumer.Util.DateUtil;
+import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,16 @@ import java.util.concurrent.ScheduledFuture;
 
 @Component
 public class OrderScheduler {
+    class TaskFuturePair{
+        OrderTask orderTask;
+        ScheduledFuture future;
+
+        TaskFuturePair(OrderTask o, ScheduledFuture f){
+            orderTask = o;
+            future = f;
+        }
+    }
+
     @Autowired
     private ThreadPoolTaskScheduler threadPoolTaskScheduler;
 
@@ -24,9 +35,9 @@ public class OrderScheduler {
 
     /**
      * Key: GroupId, OrderToSendId
-     * Value: ScheduledFuture
+     * Value: ScheduledFuture, channel pair
      */
-    private ConcurrentHashMap<String,ConcurrentHashMap<String, ScheduledFuture>> futures = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String,ConcurrentHashMap<String, TaskFuturePair>> futures = new ConcurrentHashMap<>();
 
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
@@ -40,10 +51,11 @@ public class OrderScheduler {
 
         String groupId = orderTask.getOts().getGroupId();
         String otsId = orderTask.getId();
-        ConcurrentHashMap<String, ScheduledFuture> group = futures.get(groupId);
+        ConcurrentHashMap<String, TaskFuturePair> group = futures.get(groupId);
         if (group == null)
             group = new ConcurrentHashMap<>();
-        group.put(otsId, future);
+        TaskFuturePair tfp = new TaskFuturePair(orderTask, future);
+        group.put(otsId, tfp);
 
         futures.put(groupId, group);
         return future;
@@ -56,16 +68,20 @@ public class OrderScheduler {
     public List<String> cancel(String groupId){
         List<String> cancelledId = new ArrayList<>();
 
-        ConcurrentHashMap<String, ScheduledFuture> group = futures.get(groupId);
+        ConcurrentHashMap<String, TaskFuturePair> group = futures.get(groupId);
         if (group == null)
             return cancelledId;
         group.entrySet().stream().forEach(e -> {
-            ScheduledFuture curTask = e.getValue();
-            if (curTask.isDone())
+            TaskFuturePair tfp = e.getValue();
+            if (tfp.future.isDone())
                 return;
-            if (curTask.cancel(false)) {
+            if (tfp.future.cancel(false)) {
                 logger.info("[OrderScheduler.cancel] Cancelled Future:" + e.getKey());
                 cancelledId.add(e.getKey());
+                /**
+                 * Important!!
+                 */
+                tfp.orderTask.sendACK();
             }
         });
         return cancelledId;
