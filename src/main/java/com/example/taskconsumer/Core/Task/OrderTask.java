@@ -39,14 +39,18 @@ public class OrderTask implements Runnable {
 
     @Override
     public void run() {
-        logger.info("[OrderTask.execute."+order.hashCode()+"] Time: " + DateUtil.calendarToString(Calendar.getInstance(), DateUtil.datetimeFormat));
+        logger.info("[OrderTask.execute."+getId()+"] Time: " + DateUtil.calendarToString(Calendar.getInstance(), DateUtil.datetimeFormat));
         String id = getId();
         /**
          * id 在 redis 中存在
-         * => 其他 work 正在执行该任务
+         * => 其他 worker 正在执行该任务
          */
-        if (redisService.exists(id))
+        if (redisService.exists(id)){
+            logger.info("[OrderTask.execute."+getId()+"] Task is running by other consumer");
+            sendACK();
             return;
+        }
+
 
         /**
          * 获取分布式锁失败
@@ -64,16 +68,20 @@ public class OrderTask implements Runnable {
 
         SecuredDao orderDao = daoFactory.createWithToken(broker, order.getType(), token);
 
-        logger.info("[OrderTask.execute."+order.hashCode()+"] TraderSideUser: " + traderSideUsername);
-        logger.info("[OrderTask.execute."+order.hashCode()+"] BrokerSideUser: " + brokerSideUser.getUsername());
-        logger.info("[OrderTask.execute."+order.hashCode()+"] Token: " + token);
-        logger.info("[OrderTask.execute."+order.hashCode()+"] Order: " + JSON.toJSONString(order));
+        logger.info("[OrderTask.execute."+getId()+"] TraderSideUser: " + traderSideUsername);
+        logger.info("[OrderTask.execute."+getId()+"] BrokerSideUser: " + brokerSideUser.getUsername());
+        logger.info("[OrderTask.execute."+getId()+"] Token: " + token);
+        logger.info("[OrderTask.execute."+getId()+"] Order: " + JSON.toJSONString(order));
         orderDao.create(order);
+        sendACK();
+    }
+
+    private void sendACK(){
         try{
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
         }
         catch (IOException e){
-            logger.info("RabbitMQ ACK lost");
+            logger.info("[OrderTask.execute."+getId()+"] Error: RabbitMQ ACK lost");
             e.printStackTrace();
         }
     }

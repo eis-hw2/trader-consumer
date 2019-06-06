@@ -1,11 +1,10 @@
-package com.example.taskconsumer.MessageQueue;
+package com.example.taskconsumer.Core.MessageQueue;
 
 import com.alibaba.fastjson.JSON;
 import com.example.taskconsumer.Core.Scheduler.OrderScheduler;
 import com.example.taskconsumer.Core.Task.OrderTaskFactory;
 import com.example.taskconsumer.Domain.Entity.OrderToSend;
 import com.example.taskconsumer.Service.RedisService;
-import com.example.taskconsumer.Service.TraderSideUserService;
 import com.example.taskconsumer.Util.DateUtil;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;

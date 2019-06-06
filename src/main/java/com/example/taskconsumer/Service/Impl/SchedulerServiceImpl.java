@@ -2,9 +2,8 @@ package com.example.taskconsumer.Service.Impl;
 
 import com.example.taskconsumer.Core.Scheduler.OrderScheduler;
 import com.example.taskconsumer.Core.Task.OrderTaskFactory;
-import com.example.taskconsumer.MessageQueue.TaskConsumer;
+import com.example.taskconsumer.Core.MessageQueue.TaskConsumer;
 import com.example.taskconsumer.Service.RedisService;
-import com.example.taskconsumer.Service.TraderSideUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +20,13 @@ public class SchedulerServiceImpl {
 
     @PostConstruct
     void init(){
-        orderScheduler.execute(() -> {
+        new Thread( () -> {
             try{
                 TaskConsumer.listenToRabbitMQ(orderScheduler, orderTaskFactory, redisService);
             }
             catch (Exception e){
                 e.printStackTrace();
             }
-        });
+        }).start();
     }
 }

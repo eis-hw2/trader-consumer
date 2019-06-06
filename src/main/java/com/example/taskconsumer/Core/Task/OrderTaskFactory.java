@@ -43,7 +43,7 @@ public class OrderTaskFactory {
         /**
          * Distributed lock
          */
-        orderTask.setId(orderTask.getId());
+        orderTask.setId(orderToSend.getId());
 
         /**
          * For ACK
