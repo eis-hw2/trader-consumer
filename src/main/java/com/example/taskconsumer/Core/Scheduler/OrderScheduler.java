@@ -11,6 +11,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 
 @Component
@@ -20,18 +22,52 @@ public class OrderScheduler {
 
     private static Logger logger  = LoggerFactory.getLogger("OrderScheduler");
 
+    /**
+     * Key: GroupId, OrderToSendId
+     * Value: ScheduledFuture
+     */
+    private ConcurrentHashMap<String,ConcurrentHashMap<String, ScheduledFuture>> futures = new ConcurrentHashMap<>();
+
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {
         return new ThreadPoolTaskScheduler();
     }
 
     public ScheduledFuture schedule(OrderTask orderTask, Calendar calendar){
-        logger.info("[OrderScheduler.schedule] Time: " + DateUtil.calendarToString(calendar, DateUtil.datetimeFormat));
-        logger.info("[OrderScheduler.schedule] Order: " + JSON.toJSONString(orderTask.getOrder()));
-        return schedule(orderTask, calendar.getTime());
+        logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Time: " + DateUtil.calendarToString(calendar, DateUtil.datetimeFormat));
+        logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Order: " + JSON.toJSONString(orderTask.getOrder()));
+        ScheduledFuture future = schedule(orderTask, calendar.getTime());
+
+        String groupId = orderTask.getOts().getGroupId();
+        String otsId = orderTask.getId();
+        ConcurrentHashMap<String, ScheduledFuture> group = futures.get(groupId);
+        if (group == null)
+            group = new ConcurrentHashMap<>();
+        group.put(otsId, future);
+
+        futures.put(groupId, group);
+        return future;
     }
 
     public ScheduledFuture schedule(Runnable task, Date datetime){
         return threadPoolTaskScheduler.schedule(task, datetime);
+    }
+
+    public List<String> cancel(String groupId){
+        List<String> cancelledId = new ArrayList<>();
+
+        ConcurrentHashMap<String, ScheduledFuture> group = futures.get(groupId);
+        if (group == null)
+            return cancelledId;
+        group.entrySet().stream().forEach(e -> {
+            ScheduledFuture curTask = e.getValue();
+            if (curTask.isDone())
+                return;
+            if (curTask.cancel(false)) {
+                logger.info("[OrderScheduler.cancel] Cancelled Future:" + e.getKey());
+                cancelledId.add(e.getKey());
+            }
+        });
+        return cancelledId;
     }
 }

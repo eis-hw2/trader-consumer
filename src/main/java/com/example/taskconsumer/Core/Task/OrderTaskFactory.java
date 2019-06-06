@@ -1,6 +1,7 @@
 package com.example.taskconsumer.Core.Task;
 
 import com.example.taskconsumer.Dao.Factory.DaoFactory;
+import com.example.taskconsumer.Dao.Repo.OrderToSendDao;
 import com.example.taskconsumer.Domain.Entity.OrderToSend;
 import com.example.taskconsumer.Service.BrokerService;
 import com.example.taskconsumer.Service.BrokerSideUserService;
@@ -23,9 +24,13 @@ public class OrderTaskFactory {
     private TraderSideUserService traderSideUserService;
     @Autowired
     private RedisService redisService;
+    @Autowired
+    private OrderToSendDao orderToSendDao;
 
     public OrderTask create(OrderToSend orderToSend, Channel channel, Delivery delivery){
         OrderTask orderTask = new OrderTask();
+
+        orderTask.setOts(orderToSend);
 
         orderTask.setDaoFactory(daoFactory);
         orderTask.setOrder(orderToSend.getOrder());
@@ -33,8 +38,9 @@ public class OrderTaskFactory {
         orderTask.setBrokerId(orderToSend.getBrokerId());
 
         /**
-         * Service
+         * Service and Dao
          */
+        orderTask.setOrderToSendDao(orderToSendDao);
         orderTask.setBrokerService(brokerService);
         orderTask.setBrokerSideUserService(brokerSideUserService);
         orderTask.setTraderSideUserService(traderSideUserService);

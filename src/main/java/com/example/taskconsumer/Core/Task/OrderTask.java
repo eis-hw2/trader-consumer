@@ -1,12 +1,12 @@
 package com.example.taskconsumer.Core.Task;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.example.taskconsumer.Dao.Factory.DaoFactory;
+import com.example.taskconsumer.Dao.Repo.AbstractOrderDao;
+import com.example.taskconsumer.Dao.Repo.OrderToSendDao;
 import com.example.taskconsumer.Dao.Repo.SecuredDao;
-import com.example.taskconsumer.Domain.Entity.Broker;
-import com.example.taskconsumer.Domain.Entity.BrokerSideUser;
-import com.example.taskconsumer.Domain.Entity.Order;
-import com.example.taskconsumer.Domain.Entity.TraderSideUser;
+import com.example.taskconsumer.Domain.Entity.*;
 import com.example.taskconsumer.Service.BrokerService;
 import com.example.taskconsumer.Service.BrokerSideUserService;
 import com.example.taskconsumer.Service.RedisService;
@@ -21,11 +21,14 @@ import java.io.IOException;
 import java.util.Calendar;
 
 public class OrderTask implements Runnable {
+    private OrderToSend ots;
+
     private String id;
     private BrokerSideUserService brokerSideUserService;
     private TraderSideUserService traderSideUserService;
     private BrokerService brokerService;
     private RedisService redisService;
+    private OrderToSendDao orderToSendDao;
 
     private String traderSideUsername;
     private DaoFactory daoFactory;
@@ -66,13 +69,18 @@ public class OrderTask implements Runnable {
 
         String token = brokerSideUserService.getToken(brokerSideUser.getUsername(), broker.getId());
 
-        SecuredDao orderDao = daoFactory.createWithToken(broker, order.getType(), token);
+        AbstractOrderDao orderDao = (AbstractOrderDao)daoFactory.createWithToken(broker, order.getType(), token);
 
         logger.info("[OrderTask.execute."+getId()+"] TraderSideUser: " + traderSideUsername);
         logger.info("[OrderTask.execute."+getId()+"] BrokerSideUser: " + brokerSideUser.getUsername());
         logger.info("[OrderTask.execute."+getId()+"] Token: " + token);
         logger.info("[OrderTask.execute."+getId()+"] Order: " + JSON.toJSONString(order));
-        orderDao.create(order);
+        Order createdOrder = orderDao.create(order);
+
+        ots.setStatus(OrderToSend.CREATED);
+        ots.setBrokerOrderId(createdOrder.getId());
+        orderToSendDao.save(ots);
+
         sendACK();
     }
 
@@ -171,5 +179,21 @@ public class OrderTask implements Runnable {
 
     public void setRedisService(RedisService redisService) {
         this.redisService = redisService;
+    }
+
+    public OrderToSend getOts() {
+        return ots;
+    }
+
+    public void setOts(OrderToSend ots) {
+        this.ots = ots;
+    }
+
+    public OrderToSendDao getOrderToSendDao() {
+        return orderToSendDao;
+    }
+
+    public void setOrderToSendDao(OrderToSendDao orderToSendDao) {
+        this.orderToSendDao = orderToSendDao;
     }
 }

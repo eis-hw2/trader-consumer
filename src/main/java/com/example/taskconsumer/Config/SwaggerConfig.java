@@ -26,7 +26,7 @@ public class SwaggerConfig {
 
     private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
-                .title("Trader Consumer - Primary")
+                .title("Trader MQListener - Primary")
                 .description("EIS Homework")
                 .version("1.0")
                 .build();

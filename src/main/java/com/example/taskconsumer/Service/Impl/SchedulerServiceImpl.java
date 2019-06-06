@@ -1,9 +1,8 @@
 package com.example.taskconsumer.Service.Impl;
 
-import com.example.taskconsumer.Core.Scheduler.OrderScheduler;
-import com.example.taskconsumer.Core.Task.OrderTaskFactory;
-import com.example.taskconsumer.Core.MessageQueue.TaskConsumer;
-import com.example.taskconsumer.Service.RedisService;
+import com.example.taskconsumer.Core.MessageQueue.MQListener;
+import com.example.taskconsumer.Core.MessageQueue.OrderTaskConsumer.CancelTaskConsumer;
+import com.example.taskconsumer.Core.MessageQueue.OrderTaskConsumer.CreateTaskConsumer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,17 +11,26 @@ import javax.annotation.PostConstruct;
 @Service
 public class SchedulerServiceImpl {
     @Autowired
-    private OrderScheduler orderScheduler;
+    CancelTaskConsumer cancelTaskConsumer;
     @Autowired
-    private OrderTaskFactory orderTaskFactory;
+    CreateTaskConsumer createTaskConsumer;
     @Autowired
-    private RedisService redisService;
+    MQListener mqListener;
 
     @PostConstruct
     void init(){
         new Thread( () -> {
             try{
-                TaskConsumer.listenToRabbitMQ(orderScheduler, orderTaskFactory, redisService);
+                mqListener.listenCreate(createTaskConsumer);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+        }).start();
+
+        new Thread( () -> {
+            try{
+                mqListener.listenCancel(cancelTaskConsumer);
             }
             catch (Exception e){
                 e.printStackTrace();
