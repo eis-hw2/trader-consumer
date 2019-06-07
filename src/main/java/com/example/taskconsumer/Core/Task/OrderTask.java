@@ -77,6 +77,7 @@ public class OrderTask implements Runnable {
         logger.info("[OrderTask.execute."+getId()+"] Order: " + JSON.toJSONString(order));
         Order createdOrder = orderDao.create(order);
 
+        ots.setOrder(createdOrder);
         ots.setStatus(OrderToSend.CREATED);
         ots.setBrokerOrderId(createdOrder.getId());
         orderToSendDao.save(ots);
