@@ -19,6 +19,7 @@ public class OrderToSend {
     private Integer brokerId;
     private String datetime;
     private String status;
+    private String cancelOrderId;
 
     public String getId() {
         return id;
@@ -82,5 +83,13 @@ public class OrderToSend {
 
     public void setBrokerOrderId(String brokerOrderId) {
         this.brokerOrderId = brokerOrderId;
+    }
+
+    public String getCancelOrderId() {
+        return cancelOrderId;
+    }
+
+    public void setCancelOrderId(String cancelOrderId) {
+        this.cancelOrderId = cancelOrderId;
     }
 }

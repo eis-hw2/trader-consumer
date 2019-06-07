@@ -2,6 +2,15 @@ package com.example.taskconsumer.Core.Scheduler;
 
 import com.alibaba.fastjson.JSON;
 import com.example.taskconsumer.Core.Task.OrderTask;
+import com.example.taskconsumer.Dao.Factory.DaoFactory;
+import com.example.taskconsumer.Dao.Repo.OrderDao.CancelOrderDao;
+import com.example.taskconsumer.Dao.Repo.OrderToSendDao;
+import com.example.taskconsumer.Domain.Entity.Broker;
+import com.example.taskconsumer.Domain.Entity.Order;
+import com.example.taskconsumer.Domain.Entity.OrderToSend;
+import com.example.taskconsumer.Domain.Entity.Util.Type;
+import com.example.taskconsumer.Service.BrokerService;
+import com.example.taskconsumer.Service.BrokerSideUserService;
 import com.example.taskconsumer.Util.DateUtil;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
@@ -30,6 +39,14 @@ public class OrderScheduler {
 
     @Autowired
     private ThreadPoolTaskScheduler threadPoolTaskScheduler;
+    @Autowired
+    private DaoFactory daoFactory;
+    @Autowired
+    private BrokerSideUserService brokerSideUserService;
+    @Autowired
+    private BrokerService brokerService;
+    @Autowired
+    private OrderToSendDao orderToSendDao;
 
     private static Logger logger  = LoggerFactory.getLogger("OrderScheduler");
 
@@ -80,10 +97,33 @@ public class OrderScheduler {
             return cancelledId;
         group.entrySet().stream().forEach(e -> {
             TaskFuturePair tfp = e.getValue();
-            if (tfp.future.isDone())
-                return;
-            if (tfp.future.cancel(false)) {
-                logger.info("[OrderScheduler.cancel] Cancelled Future:" + e.getKey());
+            if (tfp.future.isDone()) {
+                /**
+                 * Send Cancel Order
+                 */
+                // 1. create dao
+                logger.info("[OrderScheduler.cancel."+e.getKey()+"] Send CancelOrder");
+                String tsUsername = tfp.orderTask.getTraderSideUsername();
+                Integer brokerId = tfp.orderTask.getBrokerId();
+                Broker broker = brokerService.findById(brokerId);
+                String token = brokerSideUserService.getToken(tsUsername, brokerId);
+
+                CancelOrderDao cancelOrderDao = (CancelOrderDao)daoFactory.createWithToken(broker,"CancelOrder",token);
+
+                // 2. send cancel order
+                Order cancelOrder = new Order();
+                cancelOrder.setTargetId(tfp.orderTask.getOrder().getId());
+                cancelOrder.setTargetType(typeConvert(tfp.orderTask.getOrder().getType()));
+                Order createdCancelOrder = cancelOrderDao.create(cancelOrder);
+
+                // 3. update ots
+                OrderToSend ots = tfp.orderTask.getOts();
+                ots.setCancelOrderId(createdCancelOrder.getId());
+                orderToSendDao.save(ots);
+                logger.info("[OrderScheduler.cancel."+e.getKey()+"] CancelOrder Id:" + ots.getCancelOrderId());
+            }
+            else if (tfp.future.cancel(false)) {
+                logger.info("[OrderScheduler.cancel."+e.getKey()+"] Cancel future" );
                 cancelledId.add(e.getKey());
                 /**
                  * Important!!
@@ -92,5 +132,18 @@ public class OrderScheduler {
             }
         });
         return cancelledId;
+    }
+
+    private Type typeConvert(String type){
+        switch (type){
+            case "MarketOrder":
+                return Type.MarketOrder;
+            case "LimitOrder":
+                return Type.LimitOrder;
+            case "StopOrder":
+                return Type.StopOrder;
+            default:
+                return null;
+        }
     }
 }
