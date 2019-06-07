@@ -113,6 +113,7 @@ public class OrderScheduler {
 
                 // 2. send cancel order
                 Order cancelOrder = new Order();
+                cancelOrder.setFutureName(tfp.orderTask.getOrder().getFutureName());
                 cancelOrder.setTargetId(tfp.orderTask.getOts().getBrokerOrderId());
                 cancelOrder.setTargetType(typeConvert(tfp.orderTask.getOrder().getType()));
                 Order createdCancelOrder = cancelOrderDao.create(cancelOrder);
