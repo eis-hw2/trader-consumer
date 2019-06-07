@@ -112,10 +112,7 @@ public class OrderScheduler {
                 CancelOrderDao cancelOrderDao = (CancelOrderDao)daoFactory.createWithToken(broker,"CancelOrder",token);
 
                 // 2. send cancel order
-                Order cancelOrder = new Order();
-                cancelOrder.setFutureName(tfp.orderTask.getOrder().getFutureName());
-                cancelOrder.setTargetId(tfp.orderTask.getOts().getBrokerOrderId());
-                cancelOrder.setTargetType(typeConvert(tfp.orderTask.getOrder().getType()));
+                Order cancelOrder = tfp.orderTask.getOrder().createCancelOrder();
                 Order createdCancelOrder = cancelOrderDao.create(cancelOrder);
 
                 // 3. update ots
@@ -134,18 +131,5 @@ public class OrderScheduler {
             }
         });
         return cancelledId;
-    }
-
-    private Type typeConvert(String type){
-        switch (type){
-            case "MarketOrder":
-                return Type.MarketOrder;
-            case "LimitOrder":
-                return Type.LimitOrder;
-            case "StopOrder":
-                return Type.StopOrder;
-            default:
-                return null;
-        }
     }
 }

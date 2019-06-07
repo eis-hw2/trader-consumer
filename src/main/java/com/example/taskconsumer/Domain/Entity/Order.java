@@ -4,6 +4,7 @@ import com.example.taskconsumer.Domain.Entity.Util.Links;
 import com.example.taskconsumer.Domain.Entity.Util.Side;
 import com.example.taskconsumer.Domain.Entity.Util.Status;
 import com.example.taskconsumer.Domain.Entity.Util.Type;
+import com.example.taskconsumer.Util.Util;
 
 public class Order {
     public static final String MARKET_ORDER = "MarketOrder";
@@ -46,6 +47,16 @@ public class Order {
 
     public void setTraderName(String traderName) {
         this.traderName = traderName;
+    }
+
+    public Order createCancelOrder(){
+        Order cancelOrder = new Order();
+        cancelOrder.setFutureName(this.getFutureName());
+        cancelOrder.setTargetId(this.getId());
+        cancelOrder.setTargetType(Util.typeConvert(this.getType()));
+        cancelOrder.setSide(this.getSide());
+        cancelOrder.setUnitPrice(this.getUnitPrice());
+        return cancelOrder;
     }
 
     public Order(Order o){
