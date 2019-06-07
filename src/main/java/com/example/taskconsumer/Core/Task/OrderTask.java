@@ -60,8 +60,11 @@ public class OrderTask implements Runnable {
          * => 其他 worker 竞争到锁
          */
         boolean getLock = redisService.setIfAbsent(id, 1, 10000L);
-        if (!getLock)
+        if (!getLock) {
+            logger.info("[OrderTask.execute."+getId()+"] Task is running by other consumer");
+            sendACK();
             return;
+        }
 
         TraderSideUser traderSideUser = traderSideUserService.findByUsername(traderSideUsername);
         BrokerSideUser brokerSideUser = traderSideUser.getBrokerSideUser(brokerId);
