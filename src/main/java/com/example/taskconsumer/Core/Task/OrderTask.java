@@ -78,6 +78,10 @@ public class OrderTask implements Runnable {
         String token = brokerSideUserService.getToken(brokerSideUser.getUsername(), broker.getId());
         AbstractOrderDao orderDao = (AbstractOrderDao)daoFactory.createWithToken(broker, order.getType(), token);
 
+        /**
+         * 由于上游代码这里有bug
+         * 暂时用 try catch 解决当 order 不存在查询爆 404 的问题
+         */
         try {
             Order order = orderDao.findByClientId(id);
             if (order != null){
@@ -88,7 +92,11 @@ public class OrderTask implements Runnable {
         }
         catch(HttpClientErrorException e){
             logger.error(e.getMessage());
-            //sendACK();
+            if (e.getMessage().equals("404 null")){
+                logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
+                sendACK();
+                return;
+            }
             return;
         }
 
