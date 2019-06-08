@@ -76,11 +76,9 @@ public abstract class AbstractOrderDao extends SecuredDao<String, Order>{
         int status = rw.getInteger("status");
         /**
          * TODO
-         * 临时补丁。这个api上游搜索如果找不到会爆404
+         * 这个api上游搜索如果找不到会爆404
+         * 可能会抛出 HttpClientErrorException
          */
-        if (status == 404){
-            return null;
-        }
         logger.info("[OrderDao.create] Status: " + status);
         logger.info("[OrderDao.create] Response: " + rw.toJSONString());
 

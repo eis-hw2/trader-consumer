@@ -36,6 +36,7 @@ public class OrderTaskFactory {
         orderTask.setDaoFactory(daoFactory);
         /**
          * Important !
+         * OtsId 由 trader-gateway 中的 sender 产生
          * 之后需要根据 OtsId 查询任务是否被消费过，防止重复消费
          */
         Order orderWithOtsId = orderToSend.getOrder();

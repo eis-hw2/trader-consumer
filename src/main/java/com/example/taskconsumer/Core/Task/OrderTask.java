@@ -16,6 +16,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Delivery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.util.Calendar;
@@ -77,12 +78,20 @@ public class OrderTask implements Runnable {
         String token = brokerSideUserService.getToken(brokerSideUser.getUsername(), broker.getId());
         AbstractOrderDao orderDao = (AbstractOrderDao)daoFactory.createWithToken(broker, order.getType(), token);
 
-        Order order = orderDao.findByClientId(id);
-        if (order != null){
-            logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
-            sendACK();
+        try {
+            Order order = orderDao.findByClientId(id);
+            if (order != null){
+                logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
+                sendACK();
+                return;
+            }
+        }
+        catch(HttpClientErrorException e){
+            logger.error(e.getMessage());
+            //sendACK();
             return;
         }
+
 
         logger.info("[OrderTask.execute."+getId()+"] TraderSideUser: " + traderSideUsername);
         logger.info("[OrderTask.execute."+getId()+"] BrokerSideUser: " + brokerSideUser.getUsername());
