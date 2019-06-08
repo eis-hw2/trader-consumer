@@ -81,38 +81,40 @@ public class OrderTask implements Runnable {
         /**
          * 由于上游代码这里有bug
          * 暂时用 try catch 解决当 order 不存在查询爆 404 的问题
+         *
+         * 本应该是判断 order 为 null 时执行
+         * 现在是捕捉到 404 null error 时执行
          */
         try {
             Order order = orderDao.findByClientId(id);
             if (order != null){
-                logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
+                logger.info("[OrderTask.execute."+id+"] Task has been consumed");
                 sendACK();
                 return;
             }
         }
         catch(HttpClientErrorException e){
             logger.error(e.getMessage());
-            if (e.getMessage().equals("404 null")){
-                logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
+            if (e.getMessage().equals("404 null")) {
+                logger.info("[OrderTask.execute." + getId() + "] TraderSideUser: " + traderSideUsername);
+                logger.info("[OrderTask.execute." + getId() + "] BrokerSideUser: " + brokerSideUser.getUsername());
+                logger.info("[OrderTask.execute." + getId() + "] Token: " + token);
+                logger.info("[OrderTask.execute." + getId() + "] Order: " + JSON.toJSONString(order));
+                Order createdOrder = orderDao.create(order);
+
+                ots.setOrder(createdOrder);
+                ots.setStatus(OrderToSend.CREATED);
+                ots.setBrokerOrderId(createdOrder.getId());
+                orderToSendDao.save(ots);
+
+                sendACK();
+            }
+            else{
+                logger.info("[OrderTask.execute."+id+"] Task has been consumed");
                 sendACK();
                 return;
             }
-            return;
         }
-
-
-        logger.info("[OrderTask.execute."+getId()+"] TraderSideUser: " + traderSideUsername);
-        logger.info("[OrderTask.execute."+getId()+"] BrokerSideUser: " + brokerSideUser.getUsername());
-        logger.info("[OrderTask.execute."+getId()+"] Token: " + token);
-        logger.info("[OrderTask.execute."+getId()+"] Order: " + JSON.toJSONString(order));
-        Order createdOrder = orderDao.create(order);
-
-        ots.setOrder(createdOrder);
-        ots.setStatus(OrderToSend.CREATED);
-        ots.setBrokerOrderId(createdOrder.getId());
-        orderToSendDao.save(ots);
-
-        sendACK();
     }
 
     public void sendACK(){
