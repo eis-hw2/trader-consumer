@@ -2,6 +2,7 @@ package com.example.taskconsumer.Core.Task;
 
 import com.example.taskconsumer.Dao.Factory.DaoFactory;
 import com.example.taskconsumer.Dao.Repo.OrderToSendDao;
+import com.example.taskconsumer.Domain.Entity.Order;
 import com.example.taskconsumer.Domain.Entity.OrderToSend;
 import com.example.taskconsumer.Service.BrokerService;
 import com.example.taskconsumer.Service.BrokerSideUserService;
@@ -33,7 +34,14 @@ public class OrderTaskFactory {
         orderTask.setOts(orderToSend);
 
         orderTask.setDaoFactory(daoFactory);
-        orderTask.setOrder(orderToSend.getOrder());
+        /**
+         * Important !
+         * 之后需要根据 OtsId 查询任务是否被消费过，防止重复消费
+         */
+        Order orderWithOtsId = orderToSend.getOrder();
+        orderWithOtsId.setClientId(orderToSend.getId());
+
+        orderTask.setOrder(orderWithOtsId);
         orderTask.setTraderSideUsername(orderToSend.getTraderSideUsername());
         orderTask.setBrokerId(orderToSend.getBrokerId());
 

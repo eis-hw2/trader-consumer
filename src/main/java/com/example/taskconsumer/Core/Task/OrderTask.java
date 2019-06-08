@@ -23,7 +23,7 @@ import java.util.Calendar;
 public class OrderTask implements Runnable {
     private OrderToSend ots;
 
-    private String id;
+    private String id; // the same as otsId & the same as order's clientId
     private BrokerSideUserService brokerSideUserService;
     private TraderSideUserService traderSideUserService;
     private BrokerService brokerService;
@@ -66,13 +66,23 @@ public class OrderTask implements Runnable {
             return;
         }
 
-        TraderSideUser traderSideUser = traderSideUserService.findByUsername(traderSideUsername);
-        BrokerSideUser brokerSideUser = traderSideUser.getBrokerSideUser(brokerId);
+        /**
+         *  去 broker 检查该任务是否被执行过
+         */
         Broker broker = brokerService.findById(brokerId);
 
-        String token = brokerSideUserService.getToken(brokerSideUser.getUsername(), broker.getId());
+        TraderSideUser traderSideUser = traderSideUserService.findByUsername(traderSideUsername);
+        BrokerSideUser brokerSideUser = traderSideUser.getBrokerSideUser(brokerId);
 
+        String token = brokerSideUserService.getToken(brokerSideUser.getUsername(), broker.getId());
         AbstractOrderDao orderDao = (AbstractOrderDao)daoFactory.createWithToken(broker, order.getType(), token);
+
+        Order order = orderDao.findByClientId(id);
+        if (order != null){
+            logger.info("[OrderTask.execute."+getId()+"] Task has been consumed");
+            sendACK();
+            return;
+        }
 
         logger.info("[OrderTask.execute."+getId()+"] TraderSideUser: " + traderSideUsername);
         logger.info("[OrderTask.execute."+getId()+"] BrokerSideUser: " + brokerSideUser.getUsername());

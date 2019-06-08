@@ -60,4 +60,34 @@ public abstract class AbstractOrderDao extends SecuredDao<String, Order>{
             res = rw.getObject("body", Order.class);
         return res;
     }
+
+    public Order findByClientId(String clientId){
+        if (getType().equals("CancelOrder")){
+            throw new RuntimeException("CancelOrder has no clientId.");
+        }
+
+        Logger logger = getLogger();
+        String url = getReadBaseUrl() + "/search/clientId?clientId="+clientId;
+        logger.info("[OrderDao.findByClientId] URL: " + url);
+        logger.info("[OrderDao.findByClientId] ClientId:" + clientId);
+        ResponseEntity<JSONObject> responseEntity = getRestTemplate().getForEntity(url, JSONObject.class);
+
+        JSONObject rw = responseEntity.getBody();
+        int status = rw.getInteger("status");
+        /**
+         * TODO
+         * 临时补丁。这个api上游搜索如果找不到会爆404
+         */
+        if (status == 404){
+            return null;
+        }
+        logger.info("[OrderDao.create] Status: " + status);
+        logger.info("[OrderDao.create] Response: " + rw.toJSONString());
+
+        Order res = rw
+                .getJSONObject("_embedded")
+                .getJSONObject(getType())
+                .toJavaObject(getValueClass());
+        return res;
+    }
 }
