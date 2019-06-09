@@ -30,6 +30,7 @@ public class OrderTask implements Runnable {
     private BrokerService brokerService;
     private RedisService redisService;
     private OrderToSendDao orderToSendDao;
+    private Calendar timeToSend;
 
     private String traderSideUsername;
     private DaoFactory daoFactory;
@@ -229,5 +230,13 @@ public class OrderTask implements Runnable {
 
     public void setOrderToSendDao(OrderToSendDao orderToSendDao) {
         this.orderToSendDao = orderToSendDao;
+    }
+
+    public Calendar getTimeToSend() {
+        return timeToSend;
+    }
+
+    public void setTimeToSend(Calendar timeToSend) {
+        this.timeToSend = timeToSend;
     }
 }

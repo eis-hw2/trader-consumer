@@ -8,12 +8,9 @@ import com.example.taskconsumer.Dao.Repo.OrderToSendDao;
 import com.example.taskconsumer.Domain.Entity.Broker;
 import com.example.taskconsumer.Domain.Entity.Order;
 import com.example.taskconsumer.Domain.Entity.OrderToSend;
-import com.example.taskconsumer.Domain.Entity.Util.Type;
 import com.example.taskconsumer.Service.BrokerService;
 import com.example.taskconsumer.Service.BrokerSideUserService;
 import com.example.taskconsumer.Util.DateUtil;
-import com.rabbitmq.client.Channel;
-import javafx.concurrent.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +21,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 
 @Component
@@ -62,20 +58,59 @@ public class OrderScheduler {
      * Key: GroupId, OrderToSendId
      * Value: ScheduledFuture, channel pair
      */
-    private ConcurrentHashMap<String,ConcurrentHashMap<String, TaskFuturePair>> futures = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String,ConcurrentHashMap<String, TaskFuturePair>> groups = new ConcurrentHashMap<>();
 
     /**
-     * 回收 futures 中的“垃圾”
+     * 回收 groups 中的“垃圾”
+     * 若已经创建时间距现在超过一天，则视为垃圾
      */
     @Scheduled(cron = "0 0 0 * * ?")
     private void garbageCollection(){
-        for (Map.Entry<String, ConcurrentHashMap<String, TaskFuturePair>> entry: futures.entrySet()){
-            String groupId = entry.getKey();
-            ConcurrentHashMap<String, TaskFuturePair> group = entry.getValue();
-            for (Map.Entry<String, TaskFuturePair> entry1: group.entrySet()){
-                
-            }
-        }
+        logger.info("[OrderScheduler.garbageCollection] GC Start");
+        List<String> groupsToRemove = new ArrayList<>();
+        groups.entrySet().stream().forEach(outter ->{
+
+            ConcurrentHashMap<String, TaskFuturePair> group = outter.getValue();
+
+            List<String> futuresToRemove = new ArrayList<>();
+            /**
+             * check which future should be removed
+             */
+            group.entrySet().stream().forEach(inner -> {
+                TaskFuturePair tfp = inner.getValue();
+                if (toBeRemoved(tfp)){
+                    futuresToRemove.add(inner.getKey());
+                }
+            });
+            /**
+             * remove groups
+             */
+            futuresToRemove.stream().forEach(key -> {
+                group.remove(key);
+                logger.info("[OrderScheduler.garbageCollection] OtsId: " + key);
+            });
+
+            /**
+             * check which group should be removed
+             */
+            if (outter.getValue().size() == 0)
+                groupsToRemove.add(outter.getKey());
+        });
+
+        groupsToRemove.stream().forEach(key -> {
+            groups.remove(key);
+            logger.info("[OrderScheduler.garbageCollection] GroupId: " + key);
+
+        });
+        logger.info("[OrderScheduler.garbageCollection] GC End");
+    }
+
+    private boolean toBeRemoved(TaskFuturePair tfp){
+        if (!tfp.future.isDone())
+            return false;
+        Calendar oneDayAgo = Calendar.getInstance();
+        oneDayAgo.add(Calendar.DAY_OF_WEEK, -1);
+        return tfp.orderTask.getTimeToSend().before(oneDayAgo);
     }
 
     @Bean
@@ -88,17 +123,19 @@ public class OrderScheduler {
         logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Time: " + DateUtil.calendarToString(calendar, DateUtil.datetimeFormat));
         logger.info("[OrderScheduler.schedule."+orderTask.getId()+"] Order: " + JSON.toJSONString(orderTask.getOrder()));
 
+        orderTask.setTimeToSend(calendar);
+
         ScheduledFuture future = schedule(orderTask, calendar.getTime());
 
         String groupId = orderTask.getOts().getGroupId();
         String otsId = orderTask.getId();
-        ConcurrentHashMap<String, TaskFuturePair> group = futures.get(groupId);
+        ConcurrentHashMap<String, TaskFuturePair> group = groups.get(groupId);
         if (group == null)
             group = new ConcurrentHashMap<>();
         TaskFuturePair tfp = new TaskFuturePair(orderTask, future);
         group.put(otsId, tfp);
 
-        futures.put(groupId, group);
+        groups.put(groupId, group);
         return future;
     }
 
@@ -109,7 +146,7 @@ public class OrderScheduler {
     public List<String> cancel(String groupId){
         List<String> cancelledId = new ArrayList<>();
 
-        ConcurrentHashMap<String, TaskFuturePair> group = futures.get(groupId);
+        ConcurrentHashMap<String, TaskFuturePair> group = groups.get(groupId);
         if (group == null)
             return cancelledId;
         group.entrySet().stream().forEach(e -> {
