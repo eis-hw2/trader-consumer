@@ -13,10 +13,12 @@ import com.example.taskconsumer.Service.BrokerService;
 import com.example.taskconsumer.Service.BrokerSideUserService;
 import com.example.taskconsumer.Util.DateUtil;
 import com.rabbitmq.client.Channel;
+import javafx.concurrent.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
@@ -61,6 +63,20 @@ public class OrderScheduler {
      * Value: ScheduledFuture, channel pair
      */
     private ConcurrentHashMap<String,ConcurrentHashMap<String, TaskFuturePair>> futures = new ConcurrentHashMap<>();
+
+    /**
+     * 回收 futures 中的“垃圾”
+     */
+    @Scheduled(cron = "0 0 0 * * ?")
+    private void garbageCollection(){
+        for (Map.Entry<String, ConcurrentHashMap<String, TaskFuturePair>> entry: futures.entrySet()){
+            String groupId = entry.getKey();
+            ConcurrentHashMap<String, TaskFuturePair> group = entry.getValue();
+            for (Map.Entry<String, TaskFuturePair> entry1: group.entrySet()){
+                
+            }
+        }
+    }
 
     @Bean
     public ThreadPoolTaskScheduler threadPoolTaskScheduler() {

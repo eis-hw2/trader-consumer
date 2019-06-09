@@ -120,6 +120,7 @@ public class OrderTask implements Runnable {
     public void sendACK(){
         try{
             channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+            logger.info("[OrderTask.execute."+getId()+"] ACK is sent");
         }
         catch (IOException e){
             logger.info("[OrderTask.execute."+getId()+"] Error: RabbitMQ ACK lost");
